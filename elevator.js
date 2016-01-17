@@ -68,27 +68,6 @@
       .value();
     };
 
-    isActuallyIdle = function(elevator) {
-      return elevator.destinationDirection() == "stopped" &&
-        elevator.loadFactor() == 0;
-    }
-
-    selectIdleElevators = function() {
-      return _.filter(elevators, function(elevator) {
-        return isActuallyIdle(elevator);
-      });
-    };
-
-    sendElevatorIfIdle = function(floorNum) {
-      idleElevator = selectIdleElevators()[0];
-
-      if (idleElevator) {
-        idleElevator.goToFloor(floorNum);
-        console.log("Sending elevator to #" + floorNum + " because it was idle (sendIfIdle)");
-      }
-
-    }
-
     personWaitingForDirection = function(floorNum, dir) {
       floorButton = getFloorButton(floorNum);
 
