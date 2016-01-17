@@ -1,6 +1,8 @@
 {
   init: function(elevators, floors) {
+    const IMMEDIACY=2;
     const passingPickupThreshold = 0.7;
+    first_elevator = elevators[0];
 
     // Track pressed floors
     floor_buttons = _.map(floors, function(floor) {
@@ -33,10 +35,10 @@
           )
     };
 
-    elevatorDestinations = function() {
+    immediateElevatorDestinations = function() {
       return _.chain(elevators)
         .map(function(elevator) {
-          return elevator.destinationQueue;
+          return _.take(elevator.destinationQueue, IMMEDIACY);
         })
       .flatten()
         .union()
@@ -52,7 +54,7 @@
     }
 
     floorIsServiced = function(floorNum) {
-      return _.contains(elevatorDestinations(), floorNum);
+      return _.contains(immediateElevatorDestinations(), floorNum);
     }
 
     closestWaitingButton = function(floorNum) {
@@ -94,14 +96,16 @@
     };
 
     setLightBasedOnQueue = function(elevator) {
-      nextFloor = elevator.destinationQueue[0];
-      if (!nextFloor) {
+      elevator.checkDestinationQueue();
+
+      if (elevator.destinationQueue.length === 0) {
         elevator.goingUpIndicator(true);
         elevator.goingDownIndicator(true);
         return;
       }
 
-      currentFloor = elevator.currentFloor();
+      var nextFloor = _.first(elevator.destinationQueue);
+      var currentFloor = elevator.currentFloor();
 
       if (nextFloor > currentFloor) {
         elevatorIsGoingUp(elevator);
@@ -129,24 +133,10 @@
     _.each(floors, function(floor) {
       floor.on("up_button_pressed", function() {
         addFloorDirection(floor.floorNum(), "up");
-
-        if (floorIsServiced(floor.floorNum())) {
-          console.log("Ignored button " + floor.floorNum());
-          return;
-        }
-
-        sendElevatorIfIdle(floor.floorNum());
       });
 
       floor.on("down_button_pressed", function() {
         addFloorDirection(floor.floorNum(), "down");
-
-        if (floorIsServiced(floor.floorNum())) {
-          console.log("Ignored button " + floor.floorNum());
-          return;
-        }
-
-        sendElevatorIfIdle(floor.floorNum());
       });
     });
 
@@ -163,35 +153,32 @@
     // now set elevators in motion
 
     _.each(elevators, function(elevator) {
+
       // Whenever the elevator is idle (has no more queued destinations) ...
       elevator.on("idle", function() {
-        if (isActuallyIdle(elevator)) {
-          closestWaiting = closestWaitingButton(elevator.currentFloor());
+        closestWaiting = closestWaitingButton(elevator.currentFloor());
 
-          if (closestWaiting) {
-            console.log("Sending elevator to #" + closestWaiting.num + " because it was idle");
-            elevator.goToFloor(closestWaiting.num);
-          }
+        if (closestWaiting) {
+          elevator.goToFloor(closestWaiting.num);
+          setLightBasedOnQueue(elevator);
         } else {
-          console.log("Elevator reported idle but it wasn't really.")
+          setTimeout(function() {
+            // forces idle event to re-trigger if still idle
+            elevator.checkDestinationQueue();
+          }, 1000)
         }
       });
 
       elevator.on("floor_button_pressed", function(floorNum) {
-        setLightBasedOnQueue(elevator);
         elevator.goToFloor(floorNum);
         reoptimizeDestinations(elevator);
+        setLightBasedOnQueue(elevator);
       });
 
       elevator.on("passing_floor", function(floorNum, direction) {
-        setLightBasedOnQueue(elevator);
-
         if (personWaitingForDirection(floorNum, direction)) {
           if (elevator.loadFactor() <= passingPickupThreshold) {
             elevator.goToFloor(floorNum, true);
-            console.log("Stopped for person, they're going the same way!");
-          } else {
-            console.log("Skipping person, elevator too full");
           }
         }
       });
