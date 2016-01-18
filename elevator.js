@@ -1,63 +1,61 @@
 {
   init: function(elevators, floors) {
-    const IMMEDIACY=2;
+    const immediacy = 2;
     const passingPickupThreshold = 0.7;
-    first_elevator = elevators[0];
 
     // Track pressed floors
-    floor_buttons = _.map(floors, function(floor) {
+    const floorButtons = _.map(floors, function(floor) {
       return {
         num: floor.floorNum(),
-                  dirs: []
+        dirs: []
       };
     });
 
-    getFloorButton = function(floorNum) {
-      return _.find(floor_buttons, function(entry) {
+    const getFloorButton = function(floorNum) {
+      return _.find(floorButtons, function(entry) {
         return entry.num == floorNum;
       });
     };
 
-    addFloorDirection = function(floorNum, dir) {
-      floorButton = getFloorButton(floorNum);
+    const addFloorDirection = function(floorNum, dir) {
+      var floorButton = getFloorButton(floorNum);
       floorButton.dirs = _.union(floorButton.dirs, [dir]);
     };
 
-    clearFloorButton = function(floorNum, clearUp, clearDown) {
-      dirs = [];
+    const clearFloorButton = function(floorNum, clearUp, clearDown) {
+      var dirs = [];
+
       if (clearUp) { dirs.push("up"); }
       if (clearDown) { dirs.push("down"); }
 
 
       getFloorButton(floorNum).dirs = _.difference(
-          getFloorButton(floorNum).dirs,
-          dirs
-          )
+        getFloorButton(floorNum).dirs,
+        dirs
+      );
     };
 
-    immediateElevatorDestinations = function() {
+    const immediateElevatorDestinations = function() {
       return _.chain(elevators)
         .map(function(elevator) {
-          return _.take(elevator.destinationQueue, IMMEDIACY);
+          return _.take(elevator.destinationQueue, immediacy);
         })
-      .flatten()
+        .flatten()
         .union()
         .value();
     }
 
-    unservicedButtons = function() {
-      buttons = _.filter(floor_buttons, function(button) {
+    const unservicedButtons = function() {
+      return _.filter(floorButtons, function(button) {
         return !floorIsServiced(button.num);
       });
-
-      return buttons;
     }
 
-    floorIsServiced = function(floorNum) {
+    const floorIsServiced = function(floorNum) {
       return _.contains(immediateElevatorDestinations(), floorNum);
     }
 
-    closestWaitingButton = function(floorNum) {
+    const closestWaitingButton = function(floorNum) {
       return _.chain(unservicedButtons())
         .sortBy(function(button) {
           return Math.abs(button.num - floorNum);
@@ -68,46 +66,57 @@
       .value();
     };
 
-    personWaitingForDirection = function(floorNum, dir) {
-      floorButton = getFloorButton(floorNum);
+    const personWaitingForDirection = function(floorNum, dir) {
+      const floorButton = getFloorButton(floorNum);
 
       return _.contains(floorButton.dirs, dir);
     };
 
-    setLightBasedOnQueue = function(elevator) {
+    const setLightBasedOnQueue = function(elevator) {
       elevator.checkDestinationQueue();
 
       if (elevator.destinationQueue.length === 0) {
         elevator.goingUpIndicator(true);
         elevator.goingDownIndicator(true);
+
         return;
       }
 
-      var nextFloor = _.first(elevator.destinationQueue);
-      var currentFloor = elevator.currentFloor();
+      const nextFloor = _.first(elevator.destinationQueue);
+      const currentFloor = elevator.currentFloor();
 
       if (nextFloor > currentFloor) {
-        elevatorIsGoingUp(elevator);
+        indicateElevatorGoingUp(elevator);
       } else if (nextFloor < currentFloor) {
-        elevatorIsGoingDown(elevator);
+        indicateElevatorGoingDown(elevator);
       }
 
     }
 
-    orderByDistance = function(arr, floorNum) {
+    const orderByDistance = function(arr, floorNum) {
       return _.sortBy(arr, function(item) {
         return Math.abs(item - floorNum);
       });
     }
 
-    reoptimizeDestinations = function(elevator) {
+    const reoptimizeDestinations = function(elevator) {
       elevator.destinationQueue = orderByDistance(
-          elevator.destinationQueue,
-          elevator.currentFloor()
-          );
+        elevator.destinationQueue,
+        elevator.currentFloor()
+      );
 
       elevator.checkDestinationQueue();
     }
+
+    const indicateElevatorGoingUp = function(elevator) {
+      elevator.goingUpIndicator(true);
+      elevator.goingDownIndicator(false);
+    };
+
+    const indicateElevatorGoingDown = function(elevator) {
+      elevator.goingUpIndicator(false);
+      elevator.goingDownIndicator(true);
+    };
 
     _.each(floors, function(floor) {
       floor.on("up_button_pressed", function() {
@@ -119,23 +128,9 @@
       });
     });
 
-    elevatorIsGoingUp = function(elevator) {
-      elevator.goingUpIndicator(true);
-      elevator.goingDownIndicator(false);
-    };
-
-    elevatorIsGoingDown = function(elevator) {
-      elevator.goingUpIndicator(false);
-      elevator.goingDownIndicator(true);
-    };
-
-    // now set elevators in motion
-
     _.each(elevators, function(elevator) {
-
-      // Whenever the elevator is idle (has no more queued destinations) ...
       elevator.on("idle", function() {
-        closestWaiting = closestWaitingButton(elevator.currentFloor());
+        const closestWaiting = closestWaitingButton(elevator.currentFloor());
 
         if (closestWaiting) {
           elevator.goToFloor(closestWaiting.num);
@@ -169,7 +164,7 @@
           floorNum,
           elevator.goingUpIndicator(),
           elevator.goingDownIndicator()
-          );
+        );
       });
     });
   },

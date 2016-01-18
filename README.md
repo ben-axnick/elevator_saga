@@ -31,6 +31,10 @@ keep elevators moving as efficiently as possible by:
     if a floor is "serviced", large elevators can introduce a big wait time
     without this.
 
+## V2.1
+
+- Cleaned up the code, was using conventions of multiple languages combined with poor indentation, no functional changes.
+
 # Level 19 Benchmarks
 
 My favourite performance benchmark is to get onto Level 19, crank the spawn rate to 2.5,
